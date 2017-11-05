@@ -42,16 +42,16 @@ func main() {
 	app.HideVersion = true
 
 	app.Action = func(c *cli.Context) error {
-		if err := argcheck(in, dir, out); err != nil {
+		if err := argCheck(in, dir, out); err != nil {
 			return cli.NewExitError(app.UsageText, 1)
 		}
-		return dotask(in, dir, out, isappend)
+		return doTask(in, dir, out, isappend)
 	}
 
 	app.Run(os.Args)
 }
 
-func argcheck(in, dir, out string) error {
+func argCheck(in, dir, out string) error {
 	if (in == "" && dir == "") || out == "" {
 		return errors.New("Invalid Argment")
 	}
@@ -61,7 +61,7 @@ func argcheck(in, dir, out string) error {
 	return nil
 }
 
-func outfileopen(out string, isappend bool) (*os.File, error) {
+func outFileOpen(out string, isappend bool) (*os.File, error) {
 	var mode int
 	if isappend == true {
 		mode = os.O_APPEND | os.O_WRONLY
@@ -75,7 +75,7 @@ func outfileopen(out string, isappend bool) (*os.File, error) {
 	return ofile, nil
 }
 
-func inputlist(in, dir string) ([]string, error) {
+func inputList(in, dir string) ([]string, error) {
 	var paths []string
 	if in != "" {
 		return append(paths, in), nil
@@ -94,20 +94,20 @@ func inputlist(in, dir string) ([]string, error) {
 	return paths, nil
 }
 
-func dotask(in, dir, out string, isappend bool) error {
-	paths, err := inputlist(in, dir)
+func doTask(in, dir, out string, isappend bool) error {
+	paths, err := inputList(in, dir)
 	if err != nil {
 		return err
 	}
 
-	ofile, err := outfileopen(out, isappend)
+	ofile, err := outFileOpen(out, isappend)
 	if err != nil {
 		return err
 	}
 	defer ofile.Close()
 
-	for i := 0; i < len(paths); i++ {
-		fmt.Printf("%d:%s\n", i, paths[0])
+	for _, f := range paths {
+		fmt.Printf("%s\n", f)
 	}
 	return nil
 }
