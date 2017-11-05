@@ -19,3 +19,9 @@ func TestArgs(t *testing.T) {
 		t.Errorf("ファイル、ディレクトリ両方が指定")
 	}
 }
+
+func TestDotask(t *testing.T) {
+	if err := dotask("", "aaa", "bbb", false); err == nil {
+		t.Errorf("ディレクトのオープンに失敗")
+	}
+}
