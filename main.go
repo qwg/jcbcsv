@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -65,20 +64,6 @@ func argCheck(in, dir, out string) error {
 	return nil
 }
 
-func outFileOpen(out string, isappend bool) (*os.File, error) {
-	var mode int
-	if isappend == true {
-		mode = os.O_APPEND | os.O_WRONLY
-	} else {
-		mode = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	}
-	ofile, err := os.OpenFile(out, mode, 0666)
-	if err != nil {
-		return nil, err
-	}
-	return ofile, nil
-}
-
 func inputList(in, dir string) ([]string, error) {
 	var paths []string
 	if in != "" {
@@ -99,48 +84,48 @@ func inputList(in, dir string) ([]string, error) {
 }
 
 func doTask(in, dir, out string, isappend bool) error {
-
 	paths, err := inputList(in, dir)
 	if err != nil {
 		return err
 	}
 
-	ofile, err := outFileOpen(out, isappend)
+	mode := os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	if isappend {
+		mode = os.O_APPEND | os.O_WRONLY
+	}
+	ofile, err := os.OpenFile(out, mode, 0666)
 	if err != nil {
 		return err
 	}
 	defer ofile.Close()
+	writer := csv.NewWriter(transform.NewWriter(ofile, japanese.ShiftJIS.NewEncoder()))
+	defer writer.Flush()
+	writer.UseCRLF = true
 
 	for _, f := range paths {
-		fmt.Printf("(%s)\n", f)
-		csvFile, err := os.Open(f)
+		rows, err := readIn(f)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
-		defer csvFile.Close()
-
-		reader := csv.NewReader(transform.NewReader(csvFile, japanese.ShiftJIS.NewDecoder()))
-		//reader := csv.NewReader(csvFile)
-		reader.FieldsPerRecord = -1
-		for {
-			csvData, err := reader.Read()
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				fmt.Println(err)
-				return err
+		for _, row := range rows {
+			if len(row) < 12 || row[0] == "ご利用者" {
+				continue
 			}
-			var sep string
-
-			for _, col := range csvData {
-				fmt.Printf("%s%s", sep, col)
-				sep = ","
-			}
-			fmt.Println("")
+			//ご利用日,ご利用先など,ご利用金額
+			writer.Write([]string{row[2], row[3], row[4]})
 		}
-
 	}
-
 	return nil
+}
+
+func readIn(file string) ([][]string, error) {
+	csvFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer csvFile.Close()
+	reader := csv.NewReader(transform.NewReader(csvFile, japanese.ShiftJIS.NewDecoder()))
+	reader.FieldsPerRecord = -1
+	return reader.ReadAll()
 }
