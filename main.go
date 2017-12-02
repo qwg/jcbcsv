@@ -1,13 +1,17 @@
 package main
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/urfave/cli"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 )
 
 func main() {
@@ -95,6 +99,7 @@ func inputList(in, dir string) ([]string, error) {
 }
 
 func doTask(in, dir, out string, isappend bool) error {
+
 	paths, err := inputList(in, dir)
 	if err != nil {
 		return err
@@ -107,7 +112,35 @@ func doTask(in, dir, out string, isappend bool) error {
 	defer ofile.Close()
 
 	for _, f := range paths {
-		fmt.Printf("%s\n", f)
+		fmt.Printf("(%s)\n", f)
+		csvFile, err := os.Open(f)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		defer csvFile.Close()
+
+		reader := csv.NewReader(transform.NewReader(csvFile, japanese.ShiftJIS.NewDecoder()))
+		//reader := csv.NewReader(csvFile)
+		reader.FieldsPerRecord = -1
+		for {
+			csvData, err := reader.Read()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			var sep string
+
+			for _, col := range csvData {
+				fmt.Printf("%s%s", sep, col)
+				sep = ","
+			}
+			fmt.Println("")
+		}
+
 	}
+
 	return nil
 }
